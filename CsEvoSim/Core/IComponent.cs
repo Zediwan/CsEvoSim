@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace CsEvoSim.Core
 {
-    class IComponent
-    {
-    }
+    public interface IComponent { }
 }
+
