@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using CsEvoSim.Components;
 using CsEvoSim.Core;
+using SimplexNoise;
 
 namespace CsEvoSim.Systems
 {
@@ -13,6 +14,12 @@ namespace CsEvoSim.Systems
         private readonly double _speedNoiseStep = 0.015; // slightly different rate for speed variation
         private double _noiseTime = 0.0;
         private double _speedNoiseTime = 0.0;
+
+        public MovementSystem()
+        {
+            // Initialize SimplexNoise with a random seed
+            Noise.Seed = _random.Next();
+        }
 
         public void Update(List<Entity> entities)
         {
@@ -29,15 +36,30 @@ namespace CsEvoSim.Systems
                 // Skip movement for entities with zero movement speed
                 if (dna.MovementSpeed <= 0.0) continue;
 
-                // Use Perlin noise to get smooth directional change
-                double angle = PerlinNoise(_noiseTime + entity.GetHashCode() * 0.1) * Math.PI * 2;
+                // Use entity hash code as a unique identifier for consistent noise per entity
+                int entityId = Math.Abs(entity.GetHashCode()) % 10000;
 
-                // Use Perlin noise for speed variation as well
-                double speedNoiseFactor = PerlinNoise(_speedNoiseTime + entity.GetHashCode() * 0.13);
+                // Use SimplexNoise for directional changes (2D noise for better variation)
+                double directionNoise = Noise.CalcPixel2D(
+                    (int)(_noiseTime * 100),
+                    entityId,
+                    0.005f);
+
+                // Map noise output from [-1,1] to [0,2π] for angle
+                double angle = (directionNoise + 1) * Math.PI;
+
+                // Use SimplexNoise for speed variation (with different coordinates)
+                double speedNoise = Noise.CalcPixel2D(
+                    (int)(_speedNoiseTime * 100),
+                    entityId + 5000, // offset to get different noise pattern
+                    0.005f);
+
+                // Map from [-1,1] to [0.2,1.0] to avoid too slow movement
+                double speedFactor = (speedNoise + 1) * 0.4 + 0.2;
 
                 // Scale movement by the DNA-defined maximum movement speed and the noise factor
                 double maxSpeed = _movementScale * dna.MovementSpeed;
-                double actualSpeed = maxSpeed * speedNoiseFactor;
+                double actualSpeed = maxSpeed * speedFactor;
 
                 double dx = Math.Cos(angle) * actualSpeed;
                 double dy = Math.Sin(angle) * actualSpeed;
@@ -45,12 +67,6 @@ namespace CsEvoSim.Systems
                 position.X += dx;
                 position.Y += dy;
             }
-        }
-
-        // Simple Perlin noise approximation using sine curves (for demo)
-        private static double PerlinNoise(double t)
-        {
-            return 0.5 + 0.5 * Math.Sin(t); // smooth oscillation from 0 to 1
         }
     }
 }
