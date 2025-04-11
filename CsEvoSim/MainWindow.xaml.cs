@@ -40,22 +40,25 @@ namespace CsEvoSim
 
             // Create systems
             var energySystem = new EnergySystem();
-            var feedingSystem = new FeedingSystem(); // Add this
+            var feedingSystem = new FeedingSystem();
             var movementSystem = new MovementSystem();
             movementSystem.SetCanvasDimensions(canvasWidth, canvasHeight);
             var renderSystem = new RenderSystem(SimulationCanvas);
             var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
+            var reproductionSystem = new ReproductionSystem(canvasWidth, canvasHeight);
 
             // Add systems to world in appropriate order
             _world.AddSystem(energySystem);
-            _world.AddSystem(feedingSystem); // Add this
+            _world.AddSystem(reproductionSystem);
+            _world.AddSystem(feedingSystem);
             _world.AddSystem(movementSystem);
             _world.AddSystem(renderSystem);
             _world.AddSystem(spawnerSystem);
 
             // Track systems with settings
             _systemsWithSettings["Energy"] = energySystem;
-            _systemsWithSettings["Feeding"] = feedingSystem; // Add this
+            _systemsWithSettings["Reproduction"] = reproductionSystem;
+            _systemsWithSettings["Feeding"] = feedingSystem;
             _systemsWithSettings["Movement"] = movementSystem;
             _systemsWithSettings["Rendering"] = renderSystem;
             _systemsWithSettings["Spawner"] = spawnerSystem;
@@ -196,11 +199,18 @@ namespace CsEvoSim
 
         private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // Update movement system with new canvas dimensions
-            if (_systemsWithSettings.TryGetValue("Movement", out var system) &&
-                system is MovementSystem movementSystem)
+            // Update systems that need canvas dimensions
+            if (_systemsWithSettings.TryGetValue("Movement", out var movementSys) &&
+                movementSys is MovementSystem movementSystem)
             {
                 movementSystem.SetCanvasDimensions(SimulationCanvas.ActualWidth, SimulationCanvas.ActualHeight);
+            }
+
+            // Update reproduction system dimensions
+            if (_systemsWithSettings.TryGetValue("Reproduction", out var reproSys) &&
+                reproSys is ReproductionSystem reproductionSystem)
+            {
+                reproductionSystem.SetWorldDimensions(SimulationCanvas.ActualWidth, SimulationCanvas.ActualHeight);
             }
         }
     }

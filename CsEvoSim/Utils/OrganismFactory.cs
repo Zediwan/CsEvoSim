@@ -39,6 +39,72 @@ namespace CsEvoSim.Utils
 
             entity.AddComponent(energyComponent);
 
+            // Add reproduction component
+            var reproductionComponent = new ReproductionComponent(rand.NextDouble() * 5.0) // Random initial cooldown
+            {
+                MaxReproductionCooldown = 8.0 + rand.NextDouble() * 4.0 // 8-12 seconds between reproductions
+            };
+            entity.AddComponent(reproductionComponent);
+
+            return entity;
+        }
+
+        // Create a new organism through reproduction of a parent
+        public static Entity Reproduce(Entity parent, double mutationRate,
+            Dictionary<MutationType, double> mutationWeights, double maxX, double maxY)
+        {
+            var entity = new Entity();
+
+            // Get parent components
+            var parentDNA = parent.GetComponent<DNAComponent>();
+            var parentPos = parent.GetComponent<PositionComponent>();
+
+            if (parentDNA == null || parentPos == null)
+                return null;
+
+            // Reproduce DNA with potential mutations
+            var childDNA = parentDNA.Reproduce(mutationRate, mutationWeights);
+
+            // Position near parent with small random offset
+            double offsetDistance = parentDNA.Size * 0.75;
+            double offsetAngle = rand.NextDouble() * Math.PI * 2;
+            double x = parentPos.X + Math.Cos(offsetAngle) * offsetDistance;
+            double y = parentPos.Y + Math.Sin(offsetAngle) * offsetDistance;
+
+            // Constrain position within world bounds
+            x = Math.Clamp(x, 0, maxX);
+            y = Math.Clamp(y, 0, maxY);
+
+            // Add components
+            entity.AddComponent(new PositionComponent(x, y));
+            entity.AddComponent(childDNA);
+
+            // Create energy component with traits from DNA
+            double maxHealth = childDNA.Size * 10.0;
+            double maxEnergy = childDNA.Size * 15.0;
+
+            // Child starts with 50% of max health and energy
+            var energyComponent = new EnergyComponent(maxHealth, maxEnergy)
+            {
+                Health = maxHealth * 0.5,
+                Energy = maxEnergy * 0.5,
+                CanPhotosynthesize = childDNA.CanPhotosynthesize,
+                PhotosynthesisEfficiency = childDNA.PhotosynthesisEfficiency,
+                DigestionSpectrum = childDNA.DigestionSpectrum,
+                MaxDigestCooldown = 2.0 + rand.NextDouble()
+            };
+            entity.AddComponent(energyComponent);
+
+            // Add reproduction component with full cooldown
+            var reproductionComponent = new ReproductionComponent(10.0) // Start with full cooldown
+            {
+                MaxReproductionCooldown = 8.0 + rand.NextDouble() * 4.0 // 8-12 seconds
+            };
+            entity.AddComponent(reproductionComponent);
+
+            // Apply color adjustments
+            AdjustOrganismColors(childDNA);
+
             return entity;
         }
 
@@ -75,7 +141,8 @@ namespace CsEvoSim.Utils
             // Replace genes with adjusted ones
             for (int i = 0; i < 3; i++)
             {
-                dna.Genes[i + 1] = adjustedGenes[i + 1];
+                if (i + 1 < dna.Genes.Count)
+                    dna.Genes[i + 1] = adjustedGenes[i + 1];
             }
         }
     }
