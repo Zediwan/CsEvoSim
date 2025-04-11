@@ -39,15 +39,17 @@ namespace CsEvoSim
             _systemsWithSettings.Clear();
 
             // Create systems
+            var viabilitySystem = new ViabilitySystem();
             var energySystem = new EnergySystem();
+            var reproductionSystem = new ReproductionSystem(canvasWidth, canvasHeight);
             var feedingSystem = new FeedingSystem();
             var movementSystem = new MovementSystem();
             movementSystem.SetCanvasDimensions(canvasWidth, canvasHeight);
             var renderSystem = new RenderSystem(SimulationCanvas);
             var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
-            var reproductionSystem = new ReproductionSystem(canvasWidth, canvasHeight);
 
             // Add systems to world in appropriate order
+            _world.AddSystem(viabilitySystem); // Check viability first
             _world.AddSystem(energySystem);
             _world.AddSystem(reproductionSystem);
             _world.AddSystem(feedingSystem);

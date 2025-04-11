@@ -49,12 +49,9 @@ namespace CsEvoSim.Utils
             return entity;
         }
 
-        // Create a new organism through reproduction of a parent
         public static Entity Reproduce(Entity parent, double mutationRate,
             Dictionary<MutationType, double> mutationWeights, double maxX, double maxY)
         {
-            var entity = new Entity();
-
             // Get parent components
             var parentDNA = parent.GetComponent<DNAComponent>();
             var parentPos = parent.GetComponent<PositionComponent>();
@@ -62,10 +59,21 @@ namespace CsEvoSim.Utils
             if (parentDNA == null || parentPos == null)
                 return null;
 
+            // Check if parent is fertile before reproduction
+            if (!parentDNA.IsFertile)
+                return null;
+
             // Reproduce DNA with potential mutations
             var childDNA = parentDNA.Reproduce(mutationRate, mutationWeights);
 
-            // Position near parent with small random offset
+            // If reproduction failed or child DNA is not viable, no offspring is produced
+            if (childDNA == null || !childDNA.IsViable)
+                return null;
+
+            // Create and configure the new entity...
+            var entity = new Entity();
+
+            // Position near parent
             double offsetDistance = parentDNA.Size * 0.75;
             double offsetAngle = rand.NextDouble() * Math.PI * 2;
             double x = parentPos.X + Math.Cos(offsetAngle) * offsetDistance;
