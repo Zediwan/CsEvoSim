@@ -1,57 +1,63 @@
-﻿using CsEvoSim.Components;
-using CsEvoSim.Core;
-using CsEvoSim.Systems;
-using CsEvoSim.Utils;
-using System.Text;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
+using CsEvoSim.Systems;
+using CsEvoSim.Core;
+using CsEvoSim.Utils;
 
-namespace CsEvoSim;
-
-/// <summary>
-/// Interaction logic for MainWindow.xaml
-/// </summary>
-public partial class MainWindow : Window
+namespace CsEvoSim
 {
-    private World _world;
-    private DispatcherTimer _timer;
-
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
+        private World _world;
+        private DispatcherTimer _timer;
+        private SpawnerSystem _spawnerSystem;
 
-        _world = new World();
-        _world.AddSystem(new MovementSystem());
-        _world.AddSystem(new RenderSystem(SimulationCanvas));
+        public MainWindow()
+        {
+            InitializeComponent();
 
-        // Spawn initial entity
-        var entity = new Entity();
-        entity.AddComponent(new PositionComponent(100, 100));
-        entity.AddComponent(DNAComponent.Random());
-        _world.AddEntity(entity);
+            Loaded += (_, _) => InitializeSimulation();
+        }
 
-        // Start the simulation loop
-        _timer = new DispatcherTimer();
-        _timer.Interval = TimeSpan.FromMilliseconds(16); // ~60 FPS
-        _timer.Tick += (_, _) => _world.Update();
-        _timer.Start();
+        private void InitializeSimulation()
+        {
+            double canvasWidth = SimulationCanvas.ActualWidth;
+            double canvasHeight = SimulationCanvas.ActualHeight;
 
-    }
+            _world = new World();
 
-    private void SpawnOrganism_Click(object sender, RoutedEventArgs e)
-    {
-        double maxX = SimulationCanvas.ActualWidth;
-        double maxY = SimulationCanvas.ActualHeight;
+            // Add systems
+            _world.AddSystem(new MovementSystem());
+            _world.AddSystem(new RenderSystem(SimulationCanvas));
 
-        var entity = OrganismFactory.CreateRandomOrganism(maxX, maxY);
-        _world.AddEntity(entity);
+            _spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight)
+            {
+                SpawnRate = 1,
+                Interval = 1.0
+            };
+            _world.AddSystem(_spawnerSystem);
+
+            // Start ECS update loop
+            _timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            _timer.Tick += (_, _) => _world.Update();
+            _timer.Start();
+        }
+
+        private void SpawnRateSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_spawnerSystem != null)
+                _spawnerSystem.SpawnRate = (int)e.NewValue;
+        }
+
+        private void SpawnIntervalSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_spawnerSystem != null)
+                _spawnerSystem.Interval = e.NewValue;
+        }
     }
 }
