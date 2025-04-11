@@ -43,13 +43,17 @@ namespace CsEvoSim
             movementSystem.SetCanvasDimensions(canvasWidth, canvasHeight);
             var renderSystem = new RenderSystem(SimulationCanvas);
             var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
+            var energySystem = new EnergySystem(); // Add this line
 
-            // Add to world
+            // Add to world - note the energy system should be before movement
+            // so that entities with no energy don't move
+            _world.AddSystem(energySystem); // Add this line
             _world.AddSystem(movementSystem);
             _world.AddSystem(renderSystem);
             _world.AddSystem(spawnerSystem);
 
             // Track systems with settings
+            _systemsWithSettings["Energy"] = energySystem; // Add this line
             _systemsWithSettings["Movement"] = movementSystem;
             _systemsWithSettings["Rendering"] = renderSystem;
             _systemsWithSettings["Spawner"] = spawnerSystem;
