@@ -17,7 +17,7 @@ namespace CsEvoSim.Systems
         private double _maxOverflowPercent = 10.0; // How far beyond screen edges organisms can go (%)
         private double _energyToMoveCostMultiplier = 0.2; // Base energy cost multiplier for movement
         private double _sizeCostMultiplier = 0.1; // How much size increases energy cost
-        private double _starvationSpeedPenalty = 0.4; // Speed factor when starving (0-1)
+        private double _starvingSpeedFactor = 0.5; // Speed multiplier when starving
 
         // Cached canvas dimensions
         private double _canvasWidth;
@@ -60,10 +60,10 @@ namespace CsEvoSim.Systems
             set => _sizeCostMultiplier = value;
         }
 
-        public double StarvationSpeedPenalty
+        public double StarvingSpeedFactor
         {
-            get => _starvationSpeedPenalty;
-            set => _starvationSpeedPenalty = value;
+            get => _starvingSpeedFactor;
+            set => _starvingSpeedFactor = value;
         }
 
         public string SettingsGroupName => "Movement";
@@ -132,11 +132,11 @@ namespace CsEvoSim.Systems
             );
 
             yield return SystemSetting.CreateNumeric(
-                "StarvationSpeedPenalty",
-                "Starvation Speed Factor",
-                _starvationSpeedPenalty, 0.1, 1.0, 0.1,
-                val => _starvationSpeedPenalty = val,
-                "Speed factor when starving (0.1-1.0)"
+                "StarvingSpeedFactor",
+                "Starving Speed Factor",
+                _starvingSpeedFactor, 0.1, 1.0, 0.1,
+                val => _starvingSpeedFactor = val,
+                "Movement speed factor when organism is starving (0.1-1.0)"
             );
         }
 
@@ -166,10 +166,13 @@ namespace CsEvoSim.Systems
                 // Skip movement for entities with zero movement speed
                 if (dna.MovementSpeed <= 0.0) continue;
 
-                // Use entity hash code as a unique identifier for consistent noise per entity
+                // Check if starving - plants that can photosynthesize always move at full speed
+                bool isStarving = energy != null && energy.Energy <= 0 && !energy.CanPhotosynthesize;
+                double starvationFactor = isStarving ? _starvingSpeedFactor : 1.0;
+
+                // Get entity's randomized direction
                 int entityId = Math.Abs(entity.GetHashCode()) % 10000;
 
-                // Use SimplexNoise for directional changes (2D noise for better variation)
                 double directionNoise = Noise.CalcPixel2D(
                     (int)(_noiseTime * 100),
                     entityId,
@@ -178,73 +181,44 @@ namespace CsEvoSim.Systems
                 // Map noise output from [-1,1] to [0,2π] for angle
                 double angle = (directionNoise + 1) * Math.PI;
 
-                // Use SimplexNoise for speed variation (with different coordinates)
+                // Use SimplexNoise for speed variation
                 double speedNoise = Noise.CalcPixel2D(
                     (int)(_speedNoiseTime * 100),
-                    entityId + 5000, // offset to get different noise pattern
+                    entityId + 5000,
                     0.005f);
 
-                // Map from [-1,1] to [0.2,1.0] to avoid too slow movement
+                // Map from [-1,1] to [0.2,1.0] 
                 double speedFactor = (speedNoise + 1) * 0.4 + 0.2;
 
-                // Apply starvation penalty if out of energy
-                bool isStarving = energy != null && energy.Energy <= 0;
-                double starvationFactor = isStarving ? _starvationSpeedPenalty : 1.0;
-
-                // Scale movement by the DNA-defined maximum movement speed and the noise factor
+                // Calculate final speed with all factors
                 double maxSpeed = _movementScale * dna.MovementSpeed;
                 double actualSpeed = maxSpeed * speedFactor * starvationFactor;
 
+                // Calculate movement delta
                 double dx = Math.Cos(angle) * actualSpeed;
                 double dy = Math.Sin(angle) * actualSpeed;
 
-                // Calculate energy cost for movement
-                if (energy != null)
+                // Calculate energy cost
+                if (energy != null && !isStarving)  // Only apply energy cost if not starving
                 {
-                    // Cost formula: Base cost * Speed * Size factor
+                    // Calculate movement cost
                     double movementCost = _energyToMoveCostMultiplier *
                                          actualSpeed *
                                          (1.0 + dna.Size * _sizeCostMultiplier);
 
-                    // If we have energy, use it
-                    if (energy.Energy > 0)
-                    {
-                        // If we don't have enough energy, use what we have and convert the rest from health
-                        if (energy.Energy < movementCost)
-                        {
-                            double remainingCost = movementCost - energy.Energy;
-                            energy.Energy = 0;
-
-                            // Convert energy cost to health cost using the ratio
-                            double healthCost = remainingCost / energy.HealthToEnergyRatio;
-                            energy.Health -= healthCost;
-                        }
-                        else
-                        {
-                            // We have enough energy, just use it
-                            energy.Energy -= movementCost;
-                        }
-                    }
-                    else
-                    {
-                        // We're out of energy, directly use health
-                        double healthCost = movementCost / energy.HealthToEnergyRatio;
-                        energy.Health -= healthCost;
-                    }
+                    // Apply cost
+                    energy.Energy -= movementCost;
+                    if (energy.Energy < 0)
+                        energy.Energy = 0;
                 }
 
                 // Calculate new position
                 double newX = position.X + dx;
                 double newY = position.Y + dy;
 
-                // Apply boundary constraints by clamping to allowed range
-                // Account for organism size (assuming size is diameter)
+                // Apply boundary constraints
                 double radius = dna.Size / 2;
-
-                // Clamp X position
                 newX = Math.Max(minX + radius, Math.Min(maxX - radius, newX));
-
-                // Clamp Y position
                 newY = Math.Max(minY + radius, Math.Min(maxY - radius, newY));
 
                 // Update position

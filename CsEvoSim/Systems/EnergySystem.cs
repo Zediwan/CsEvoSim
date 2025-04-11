@@ -1,5 +1,4 @@
-﻿// File: CsEvoSim/Systems/EnergySystem.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CsEvoSim.Components;
 using CsEvoSim.Core;
@@ -10,14 +9,12 @@ namespace CsEvoSim.Systems
     {
         private double _healthToSizeMultiplier = 10.0; // Health = Size * Multiplier
         private double _energyToSizeMultiplier = 15.0; // Energy = Size * Multiplier
-        private double _passiveEnergyRegenRate = 0.1; // Energy regenerated per second when not moving
-        private double _healthLossRate = 0.5; // Health lost per second when out of energy
-        private double _healthToEnergyRatio = 3.0; // How much 1 health point equals in energy units
+        private double _baseMetabolicRate = 0.1;     // Base energy consumed per second
+        private double _movementEnergyFactor = 0.5;  // How much movement increases energy consumption
+        private double _healthLossRate = 0.5;        // Health lost per second when out of energy
+        private double _environmentalSunlight = 1.0;  // Global sunlight level (affects photosynthesis)
 
         public string SettingsGroupName => "Energy";
-
-        // Property to expose the ratio to other systems
-        public double HealthToEnergyRatio => _healthToEnergyRatio;
 
         public IEnumerable<SystemSetting> GetSettings()
         {
@@ -38,65 +35,84 @@ namespace CsEvoSim.Systems
             );
 
             yield return SystemSetting.CreateNumeric(
-                "PassiveEnergyRegenRate",
-                "Energy Regen Rate",
-                _passiveEnergyRegenRate, 0.0, 1.0, 0.05,
-                val => _passiveEnergyRegenRate = val,
-                "How much energy regenerates passively per second"
+                "BaseMetabolicRate",
+                "Base Metabolic Rate",
+                _baseMetabolicRate, 0.01, 1.0, 0.01,
+                val => _baseMetabolicRate = val,
+                "How much energy is consumed per second at rest"
+            );
+
+            yield return SystemSetting.CreateNumeric(
+                "MovementEnergyFactor",
+                "Movement Energy Factor",
+                _movementEnergyFactor, 0.1, 2.0, 0.1,
+                val => _movementEnergyFactor = val,
+                "How much movement increases energy consumption"
             );
 
             yield return SystemSetting.CreateNumeric(
                 "HealthLossRate",
-                "Health Loss Rate",
+                "Starvation Rate",
                 _healthLossRate, 0.1, 2.0, 0.1,
                 val => _healthLossRate = val,
-                "How much health is lost per second when energy is depleted"
+                "How much health is lost per second when out of energy"
             );
 
             yield return SystemSetting.CreateNumeric(
-                "HealthToEnergyRatio",
-                "Health to Energy Ratio",
-                _healthToEnergyRatio, 1.0, 10.0, 0.5,
-                val => _healthToEnergyRatio = val,
-                "How much energy 1 point of health equals (higher = health is more valuable)"
+                "EnvironmentalSunlight",
+                "Sunlight Level",
+                _environmentalSunlight, 0.1, 2.0, 0.1,
+                val => _environmentalSunlight = val,
+                "Global sunlight level affecting photosynthesis (1.0 = normal)"
             );
         }
 
         public void Update(List<Entity> entities)
         {
             double frameTime = 1.0 / 60.0; // Assuming 60 FPS
-
             List<Entity> entitiesToRemove = new List<Entity>();
 
             foreach (var entity in entities)
             {
                 var energy = entity.GetComponent<EnergyComponent>();
                 var dna = entity.GetComponent<DNAComponent>();
+                var position = entity.GetComponent<PositionComponent>();
 
                 if (energy == null || dna == null) continue;
 
-                // Update max health/energy based on size and current multipliers
+                // Update max values based on size
                 energy.MaxHealth = dna.Size * _healthToSizeMultiplier;
                 energy.MaxEnergy = dna.Size * _energyToSizeMultiplier;
 
-                // Update the energy component's internal ratio value
-                energy.HealthToEnergyRatio = _healthToEnergyRatio;
+                // Run photosynthesis for capable organisms
+                energy.UpdatePhotosynthesis(frameTime, _environmentalSunlight);
 
-                // Cap current health/energy to max if needed
-                energy.Health = Math.Min(energy.Health, energy.MaxHealth);
-                energy.Energy = Math.Min(energy.Energy, energy.MaxEnergy);
+                // Update digestion cooldown
+                energy.UpdateDigestion(frameTime);
 
-                // Passive energy regeneration for non-moving organisms
-                if (dna.MovementSpeed <= 0.1)
+                // Calculate metabolic cost (size-based + movement)
+                double metabolicCost = _baseMetabolicRate * dna.Size * frameTime;
+
+                // Add movement cost if moving
+                if (position != null && dna.MovementSpeed > 0.1)
                 {
-                    energy.Energy += _passiveEnergyRegenRate * frameTime;
-                    energy.Energy = Math.Min(energy.Energy, energy.MaxEnergy);
+                    metabolicCost += dna.Size * dna.MovementSpeed * _movementEnergyFactor * frameTime;
                 }
 
-                // Health loss when energy is depleted
+                // Apply metabolic cost
+                energy.Energy -= metabolicCost;
+
+                // Handle starvation
                 if (energy.Energy <= 0)
                 {
-                    energy.Health -= _healthLossRate * frameTime;
+                    // Calculate starvation severity based on how negative energy is
+                    double starvationSeverity = Math.Min(1.0, Math.Abs(energy.Energy / energy.MaxEnergy));
+
+                    // Apply health loss
+                    double healthLoss = _healthLossRate * frameTime * (1.0 + starvationSeverity);
+
+                    energy.Energy = 0; // Clamp to zero
+                    energy.Health -= healthLoss;
 
                     // Mark for removal if health reaches zero
                     if (energy.Health <= 0)

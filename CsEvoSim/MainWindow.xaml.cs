@@ -39,21 +39,23 @@ namespace CsEvoSim
             _systemsWithSettings.Clear();
 
             // Create systems
+            var energySystem = new EnergySystem();
+            var feedingSystem = new FeedingSystem(); // Add this
             var movementSystem = new MovementSystem();
             movementSystem.SetCanvasDimensions(canvasWidth, canvasHeight);
             var renderSystem = new RenderSystem(SimulationCanvas);
             var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
-            var energySystem = new EnergySystem(); // Add this line
 
-            // Add to world - note the energy system should be before movement
-            // so that entities with no energy don't move
-            _world.AddSystem(energySystem); // Add this line
+            // Add systems to world in appropriate order
+            _world.AddSystem(energySystem);
+            _world.AddSystem(feedingSystem); // Add this
             _world.AddSystem(movementSystem);
             _world.AddSystem(renderSystem);
             _world.AddSystem(spawnerSystem);
 
             // Track systems with settings
-            _systemsWithSettings["Energy"] = energySystem; // Add this line
+            _systemsWithSettings["Energy"] = energySystem;
+            _systemsWithSettings["Feeding"] = feedingSystem; // Add this
             _systemsWithSettings["Movement"] = movementSystem;
             _systemsWithSettings["Rendering"] = renderSystem;
             _systemsWithSettings["Spawner"] = spawnerSystem;
