@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using CsEvoSim.Components;
+using CsEvoSim.Core;
+using CsEvoSim.Systems;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -8,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace CsEvoSim;
 
@@ -16,8 +20,27 @@ namespace CsEvoSim;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private World _world;
+    private DispatcherTimer _timer;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        _world = new World();
+        _world.AddSystem(new MovementSystem());
+        _world.AddSystem(new RenderSystem(SimulationCanvas));
+
+        // Spawn initial entity
+        var entity = new Entity();
+        entity.AddComponent(new PositionComponent(100, 100));
+        _world.AddEntity(entity);
+
+        // Start the simulation loop
+        _timer = new DispatcherTimer();
+        _timer.Interval = TimeSpan.FromMilliseconds(16); // ~60 FPS
+        _timer.Tick += (_, _) => _world.Update();
+        _timer.Start();
+
     }
 }
