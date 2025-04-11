@@ -11,17 +11,26 @@
                     VerticalAlignment="Top"
                     Margin="10"
                     Background="White"
-                    Width="180"
+                    Width="200"
                     Opacity="0.9">
+
             <TextBlock Text="Spawn Rate" Margin="5"/>
-            <Slider Minimum="1" Maximum="10" Value="1"
+            <Slider Name="SpawnRateSlider" Minimum="1" Maximum="10" Value="1"
                     TickFrequency="1" IsSnapToTickEnabled="True"
                     ValueChanged="SpawnRateSliderChanged" Margin="5"/>
+            <TextBlock Name="SpawnRateValue" Text="1" Margin="5"/>
 
             <TextBlock Text="Spawn Interval (s)" Margin="5"/>
-            <Slider Minimum="0.1" Maximum="5" Value="1"
+            <Slider Name="SpawnIntervalSlider" Minimum="0.1" Maximum="5" Value="1"
                     TickFrequency="0.1" IsSnapToTickEnabled="True"
                     ValueChanged="SpawnIntervalSliderChanged" Margin="5"/>
+            <TextBlock Name="SpawnIntervalValue" Text="1.0" Margin="5"/>
+
+            <Button Content="Pause / Resume"
+                    Click="PauseResume_Click"
+                    Margin="10" />
+
+            <TextBlock Name="OrganismCountLabel" Text="Organisms: 0" Margin="5"/>
         </StackPanel>
     </Grid>
 </Window>

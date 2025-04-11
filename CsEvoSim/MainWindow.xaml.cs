@@ -2,8 +2,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using CsEvoSim.Systems;
 using CsEvoSim.Core;
+using CsEvoSim.Systems;
 using CsEvoSim.Utils;
 
 namespace CsEvoSim
@@ -13,11 +13,11 @@ namespace CsEvoSim
         private World _world;
         private DispatcherTimer _timer;
         private SpawnerSystem _spawnerSystem;
+        private bool _paused = false;
 
         public MainWindow()
         {
             InitializeComponent();
-
             Loaded += (_, _) => InitializeSimulation();
         }
 
@@ -28,36 +28,54 @@ namespace CsEvoSim
 
             _world = new World();
 
-            // Add systems
-            _world.AddSystem(new MovementSystem());
-            _world.AddSystem(new RenderSystem(SimulationCanvas));
-
             _spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight)
             {
-                SpawnRate = 1,
-                Interval = 1.0
+                SpawnRate = (int)SpawnRateSlider.Value,
+                Interval = SpawnIntervalSlider.Value
             };
+
+            _world.AddSystem(new MovementSystem());
+            _world.AddSystem(new RenderSystem(SimulationCanvas));
             _world.AddSystem(_spawnerSystem);
 
-            // Start ECS update loop
             _timer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromMilliseconds(16)
             };
-            _timer.Tick += (_, _) => _world.Update();
+
+            _timer.Tick += (_, _) =>
+            {
+                if (!_paused)
+                {
+                    _world.Update();
+                    OrganismCountLabel.Text = $"Organisms: {_world.Entities.Count}";
+                }
+            };
+
             _timer.Start();
         }
 
         private void SpawnRateSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_spawnerSystem != null)
-                _spawnerSystem.SpawnRate = (int)e.NewValue;
+            if (_spawnerSystem == null) return;
+
+            int rate = (int)e.NewValue;
+            _spawnerSystem.SpawnRate = rate;
+            SpawnRateValue.Text = rate.ToString();
         }
 
         private void SpawnIntervalSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (_spawnerSystem != null)
-                _spawnerSystem.Interval = e.NewValue;
+            if (_spawnerSystem == null) return;
+
+            double interval = Math.Round(e.NewValue, 2);
+            _spawnerSystem.Interval = interval;
+            SpawnIntervalValue.Text = interval.ToString("0.00");
+        }
+
+        private void PauseResume_Click(object sender, RoutedEventArgs e)
+        {
+            _paused = !_paused;
         }
     }
 }
