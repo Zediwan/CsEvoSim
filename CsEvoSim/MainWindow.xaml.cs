@@ -1,6 +1,7 @@
 ﻿using CsEvoSim.Components;
 using CsEvoSim.Core;
 using CsEvoSim.Systems;
+using CsEvoSim.Utils;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -43,5 +44,14 @@ public partial class MainWindow : Window
         _timer.Tick += (_, _) => _world.Update();
         _timer.Start();
 
+    }
+
+    private void SpawnOrganism_Click(object sender, RoutedEventArgs e)
+    {
+        double maxX = SimulationCanvas.ActualWidth;
+        double maxY = SimulationCanvas.ActualHeight;
+
+        var entity = OrganismFactory.CreateRandomOrganism(maxX, maxY);
+        _world.AddEntity(entity);
     }
 }

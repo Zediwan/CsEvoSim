@@ -4,5 +4,11 @@
         Title="CsEvoSim" Height="720" Width="1280">
     <Grid>
         <Canvas Name="SimulationCanvas" Background="Black"/>
+        <Button Content="Spawn Organism"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        Margin="10"
+        Click="SpawnOrganism_Click"/>
+
     </Grid>
 </Window>
