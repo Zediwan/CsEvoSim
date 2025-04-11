@@ -1,12 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CsEvoSim.Core;
 
 namespace CsEvoSim.Components
 {
-    class EnergyComponent
+    public class EnergyComponent : IComponent
     {
+        public double Energy { get; set; }
+
+        public EnergyComponent(double initial)
+        {
+            Energy = initial;
+        }
     }
 }

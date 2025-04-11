@@ -1,12 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CsEvoSim.Core;
 
 namespace CsEvoSim.Components
 {
-    class PositionComponent
+    public class PositionComponent : IComponent
     {
+        public double X { get; set; }
+        public double Y { get; set; }
+
+        public PositionComponent(double x, double y)
+        {
+            X = x;
+            Y = y;
+        }
     }
 }
