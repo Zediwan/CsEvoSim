@@ -4,38 +4,85 @@
         Title="CsEvoSim" Height="720" Width="1280"
         Background="Black">
     <Grid>
-        <Canvas Name="SimulationCanvas" Background="Black"/>
+        <!-- Main layout with DockPanel ensuring proper z-order -->
+        <DockPanel>
+            <!-- Menu is docked to top and will always be on top -->
+            <Menu DockPanel.Dock="Top" Background="#F0F0F0" Panel.ZIndex="10">
+                <MenuItem Header="_File">
+                    <MenuItem Header="_Reset Simulation" Click="ResetSimulation_Click"/>
+                    <Separator/>
+                    <MenuItem Header="_Exit" Click="Exit_Click"/>
+                </MenuItem>
+                <MenuItem Header="_Settings" Name="SettingsMenuItem">
+                    <!-- Settings will be dynamically added here -->
+                </MenuItem>
+                <MenuItem Header="_View">
+                    <MenuItem Header="Show _Statistics Panel" IsCheckable="True" IsChecked="True" 
+                              Click="ShowStatistics_Click" x:Name="ShowStatisticsMenuItem"/>
+                </MenuItem>
+                <MenuItem Header="_Help">
+                    <MenuItem Header="_About" Click="About_Click"/>
+                </MenuItem>
+            </Menu>
 
-        <StackPanel Orientation="Vertical"
+            <!-- Canvas fills the rest of space below the menu -->
+            <Canvas Name="SimulationCanvas" Background="Black" />
+        </DockPanel>
+
+        <!-- Control overlay (statistics panel) -->
+        <StackPanel x:Name="StatisticsPanel"
+                    Orientation="Vertical"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top"
-                    Margin="10"
+                    Margin="30 30 10 0"
                     Background="White"
                     Width="200"
-                    Opacity="0.9">
-
-            <CheckBox Name="EnableSpawningCheckBox" Content="Enable Spawning" 
-                      Margin="5" IsChecked="True" 
-                      Checked="EnableSpawningCheckBox_CheckedChanged"
-                      Unchecked="EnableSpawningCheckBox_CheckedChanged"/>
-            
-            <TextBlock Text="Spawn Rate" Margin="5"/>
-            <Slider Name="SpawnRateSlider" Minimum="1" Maximum="10" Value="1"
-                    TickFrequency="1" IsSnapToTickEnabled="True"
-                    ValueChanged="SpawnRateSliderChanged" Margin="5"/>
-            <TextBlock Name="SpawnRateValue" Text="1" Margin="5"/>
-
-            <TextBlock Text="Spawn Interval (s)" Margin="5"/>
-            <Slider Name="SpawnIntervalSlider" Minimum="0.1" Maximum="5" Value="1"
-                    TickFrequency="0.1" IsSnapToTickEnabled="True"
-                    ValueChanged="SpawnIntervalSliderChanged" Margin="5"/>
-            <TextBlock Name="SpawnIntervalValue" Text="1.0" Margin="5"/>
-
-            <Button Content="Pause / Resume"
-                    Click="PauseResume_Click"
-                    Margin="10" />
+                    Opacity="0.9"
+                    Panel.ZIndex="5">
 
             <TextBlock Name="OrganismCountLabel" Text="Organisms: 0" Margin="5"/>
+            <TextBlock Name="FpsCounterLabel" Text="FPS: 0" Margin="5"/>
         </StackPanel>
+
+        <!-- Pause/Play Button in top-left corner -->
+        <ToggleButton x:Name="PausePlayButton" 
+              Width="30" 
+              Height="30" 
+              HorizontalAlignment="Left" 
+              VerticalAlignment="Top"
+              Margin="10,40,0,0"
+              Panel.ZIndex="5"
+              Checked="PausePlayButton_CheckedChanged"
+              Unchecked="PausePlayButton_CheckedChanged">
+            <ToggleButton.Template>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="#80000000" CornerRadius="3">
+                        <Grid Width="16" Height="16">
+                            <!-- Play icon (shown when paused) -->
+                            <Path x:Name="PlayIcon" 
+                          Fill="White" 
+                          Data="M 0,0 L 10,8 L 0,16 Z" 
+                          Stretch="Uniform" 
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Visibility="Visible"/>
+
+                            <!-- Pause icon (shown when playing) -->
+                            <Canvas x:Name="PauseIcon" Width="16" Height="16" Visibility="Collapsed">
+                                <Rectangle Fill="White" Width="4" Height="12" Canvas.Left="3" Canvas.Top="2"/>
+                                <Rectangle Fill="White" Width="4" Height="12" Canvas.Left="9" Canvas.Top="2"/>
+                            </Canvas>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="PlayIcon" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="PauseIcon" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </ToggleButton.Template>
+        </ToggleButton>
+
     </Grid>
 </Window>

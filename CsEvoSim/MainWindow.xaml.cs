@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
@@ -12,8 +14,14 @@ namespace CsEvoSim
     {
         private World _world;
         private DispatcherTimer _timer;
-        private SpawnerSystem _spawnerSystem;
+        private Dictionary<string, ISystemWithSettings> _systemsWithSettings = new();
         private bool _paused = false;
+
+        // FPS counter variables
+        private Stopwatch _fpsStopwatch;
+        private int _frameCount;
+        private double _elapsedTime;
+        private const double FPS_UPDATE_INTERVAL = 0.5; // Update FPS display every 0.5 seconds
 
         public MainWindow()
         {
@@ -27,17 +35,34 @@ namespace CsEvoSim
             double canvasHeight = SimulationCanvas.ActualHeight;
 
             _world = new World();
+            _systemsWithSettings.Clear();
 
-            _spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight)
-            {
-                SpawnRate = (int)SpawnRateSlider.Value,
-                Interval = SpawnIntervalSlider.Value,
-                IsEnabled = EnableSpawningCheckBox.IsChecked ?? true
-            };
+            // Create systems
+            var movementSystem = new MovementSystem();
+            var renderSystem = new RenderSystem(SimulationCanvas);
+            var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
 
-            _world.AddSystem(new MovementSystem());
-            _world.AddSystem(new RenderSystem(SimulationCanvas));
-            _world.AddSystem(_spawnerSystem);
+            // Add to world
+            _world.AddSystem(movementSystem);
+            _world.AddSystem(renderSystem);
+            _world.AddSystem(spawnerSystem);
+
+            // Track systems with settings
+            _systemsWithSettings["Movement"] = movementSystem;
+            _systemsWithSettings["Rendering"] = renderSystem;
+            _systemsWithSettings["Spawner"] = spawnerSystem;
+
+            // Generate dynamic UI for system settings
+            BuildSettingsMenu();
+
+            // Initialize FPS counter
+            _fpsStopwatch = new Stopwatch();
+            _fpsStopwatch.Start();
+            _frameCount = 0;
+            _elapsedTime = 0;
+
+            // Set initial play button state
+            PausePlayButton.IsChecked = _paused;
 
             _timer = new DispatcherTimer
             {
@@ -50,53 +75,115 @@ namespace CsEvoSim
                 {
                     _world.Update();
                     OrganismCountLabel.Text = $"Organisms: {_world.Entities.Count}";
+                    UpdateFpsCounter();
                 }
             };
 
             _timer.Start();
         }
 
-        private void SpawnRateSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void UpdateFpsCounter()
         {
-            if (_spawnerSystem == null) return;
+            _frameCount++;
 
-            int rate = (int)e.NewValue;
-            _spawnerSystem.SpawnRate = rate;
-            SpawnRateValue.Text = rate.ToString();
+            // Calculate time since last update
+            double elapsed = _fpsStopwatch.Elapsed.TotalSeconds;
+            _elapsedTime += elapsed;
+            _fpsStopwatch.Restart();
+
+            // Update display approximately every half second
+            if (_elapsedTime >= FPS_UPDATE_INTERVAL)
+            {
+                double fps = _frameCount / _elapsedTime;
+                FpsCounterLabel.Text = $"FPS: {fps:0.0}";
+
+                // Reset counters
+                _frameCount = 0;
+                _elapsedTime = 0;
+            }
         }
 
-        private void SpawnIntervalSliderChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void BuildSettingsMenu()
         {
-            if (_spawnerSystem == null) return;
+            // Clear existing items
+            SettingsMenuItem.Items.Clear();
 
-            double interval = Math.Round(e.NewValue, 2);
-            _spawnerSystem.Interval = interval;
-            SpawnIntervalValue.Text = interval.ToString("0.00");
+            // Add general settings
+            var generalMenuItem = new MenuItem { Header = "_General" };
+            var pauseMenuItem = new MenuItem
+            {
+                Header = "Pause/Resume",
+                IsCheckable = true,
+                IsChecked = _paused
+            };
+            pauseMenuItem.Click += PauseResume_Click;
+            generalMenuItem.Items.Add(pauseMenuItem);
+            SettingsMenuItem.Items.Add(generalMenuItem);
+
+            // Add separator between general and system-specific settings
+            SettingsMenuItem.Items.Add(new Separator());
+
+            // Add each system's settings
+            foreach (var system in _systemsWithSettings.Values)
+            {
+                var systemMenuItem = new MenuItem { Header = $"_{system.SettingsGroupName}" };
+
+                foreach (var setting in system.GetSettings())
+                {
+                    var settingElement = SettingsUIFactory.CreateUIElement(setting);
+                    var menuItem = new MenuItem { Header = settingElement };
+                    systemMenuItem.Items.Add(menuItem);
+                }
+
+                SettingsMenuItem.Items.Add(systemMenuItem);
+            }
+        }
+
+        private void ResetSimulation_Click(object sender, RoutedEventArgs e)
+        {
+            InitializeSimulation();
+        }
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         private void PauseResume_Click(object sender, RoutedEventArgs e)
         {
             _paused = !_paused;
+
+            // Update pause/play button state to match
+            PausePlayButton.IsChecked = _paused;
+
+            // Update menu item if it's the source of the click
+            if (sender is MenuItem menuItem)
+                menuItem.IsChecked = _paused;
         }
 
-        private void EnableSpawningCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        private void PausePlayButton_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            if (_spawnerSystem == null) return;
+            _paused = PausePlayButton.IsChecked ?? false;
 
-            bool isEnabled = EnableSpawningCheckBox.IsChecked ?? false;
+            // Update menu item to match button state
+            var menuItem = SettingsMenuItem.Items[0] as MenuItem;
+            if (menuItem != null && menuItem.Items.Count > 0 && menuItem.Items[0] is MenuItem pauseMenuItem)
+            {
+                pauseMenuItem.IsChecked = _paused;
+            }
+        }
 
-            // Update spawner system
-            _spawnerSystem.IsEnabled = isEnabled;
+        private void ShowStatistics_Click(object sender, RoutedEventArgs e)
+        {
+            var menuItem = sender as MenuItem;
+            bool showStats = menuItem?.IsChecked ?? false;
+            StatisticsPanel.Visibility = showStats ? Visibility.Visible : Visibility.Collapsed;
+        }
 
-            // Update UI controls
-            SpawnRateSlider.IsEnabled = isEnabled;
-            SpawnIntervalSlider.IsEnabled = isEnabled;
-
-            // Optional: visual greying out
-            SpawnRateSlider.Opacity = isEnabled ? 1.0 : 0.5;
-            SpawnRateValue.Opacity = isEnabled ? 1.0 : 0.5;
-            SpawnIntervalSlider.Opacity = isEnabled ? 1.0 : 0.5;
-            SpawnIntervalValue.Opacity = isEnabled ? 1.0 : 0.5;
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("CsEvoSim - Evolution Simulation\nVersion 1.0",
+                "About", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }

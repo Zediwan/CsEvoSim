@@ -6,14 +6,35 @@ using SimplexNoise;
 
 namespace CsEvoSim.Systems
 {
-    public class MovementSystem : ISystem
+    public class MovementSystem : ISystemWithSettings
     {
         private readonly Random _random = new();
-        private readonly double _movementScale = 1.5; // base movement speed
-        private readonly double _noiseStep = 0.01;    // how fast noise changes
-        private readonly double _speedNoiseStep = 0.015; // slightly different rate for speed variation
+        private double _movementScale = 1.5; // base movement speed
+        private double _noiseStep = 0.01;    // how fast noise changes
+        private double _speedNoiseStep = 0.015; // slightly different rate for speed variation
         private double _noiseTime = 0.0;
         private double _speedNoiseTime = 0.0;
+
+        // Properties for settings
+        public double MovementScale
+        {
+            get => _movementScale;
+            set => _movementScale = value;
+        }
+
+        public double NoiseStep
+        {
+            get => _noiseStep;
+            set => _noiseStep = value;
+        }
+
+        public double SpeedNoiseStep
+        {
+            get => _speedNoiseStep;
+            set => _speedNoiseStep = value;
+        }
+
+        public string SettingsGroupName => "Movement";
 
         public MovementSystem()
         {
@@ -21,8 +42,36 @@ namespace CsEvoSim.Systems
             Noise.Seed = _random.Next();
         }
 
+        public IEnumerable<SystemSetting> GetSettings()
+        {
+            yield return SystemSetting.CreateNumeric(
+                "MovementScale",
+                "Base Movement Speed",
+                _movementScale, 0.5, 5.0, 0.1,
+                val => _movementScale = val,
+                "Base speed multiplier for organism movement"
+            );
+
+            yield return SystemSetting.CreateNumeric(
+                "NoiseStep",
+                "Direction Change Rate",
+                _noiseStep, 0.001, 0.05, 0.001,
+                val => _noiseStep = val,
+                "How quickly organisms change direction (higher = more erratic)"
+            );
+
+            yield return SystemSetting.CreateNumeric(
+                "SpeedNoiseStep",
+                "Speed Variation Rate",
+                _speedNoiseStep, 0.001, 0.05, 0.001,
+                val => _speedNoiseStep = val,
+                "How quickly organism speed varies (higher = more variable speed)"
+            );
+        }
+
         public void Update(List<Entity> entities)
         {
+            // Existing implementation
             _noiseTime += _noiseStep;
             _speedNoiseTime += _speedNoiseStep;
 
