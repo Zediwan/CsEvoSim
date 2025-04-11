@@ -22,15 +22,17 @@ namespace CsEvoSim.Systems
             foreach (var entity in entities)
             {
                 var pos = entity.GetComponent<PositionComponent>();
-                if (pos == null) continue;
+                var dna = entity.GetComponent<DNAComponent>();
+                if (pos == null || dna == null) continue;
 
+                // Create visual if missing
                 if (!_entityVisuals.ContainsKey(entity))
                 {
                     var ellipse = new Ellipse
                     {
-                        Width = 10,
-                        Height = 10,
-                        Fill = Brushes.CadetBlue
+                        Width = dna.Size,
+                        Height = dna.Size,
+                        Fill = new SolidColorBrush(dna.Color)
                     };
                     _entityVisuals[entity] = ellipse;
                     _canvas.Children.Add(ellipse);

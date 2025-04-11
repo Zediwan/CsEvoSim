@@ -34,6 +34,7 @@ public partial class MainWindow : Window
         // Spawn initial entity
         var entity = new Entity();
         entity.AddComponent(new PositionComponent(100, 100));
+        entity.AddComponent(DNAComponent.Random());
         _world.AddEntity(entity);
 
         // Start the simulation loop
