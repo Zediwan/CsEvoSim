@@ -31,7 +31,8 @@ namespace CsEvoSim
             _spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight)
             {
                 SpawnRate = (int)SpawnRateSlider.Value,
-                Interval = SpawnIntervalSlider.Value
+                Interval = SpawnIntervalSlider.Value,
+                IsEnabled = EnableSpawningCheckBox.IsChecked ?? true
             };
 
             _world.AddSystem(new MovementSystem());
@@ -76,6 +77,26 @@ namespace CsEvoSim
         private void PauseResume_Click(object sender, RoutedEventArgs e)
         {
             _paused = !_paused;
+        }
+
+        private void EnableSpawningCheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            if (_spawnerSystem == null) return;
+
+            bool isEnabled = EnableSpawningCheckBox.IsChecked ?? false;
+
+            // Update spawner system
+            _spawnerSystem.IsEnabled = isEnabled;
+
+            // Update UI controls
+            SpawnRateSlider.IsEnabled = isEnabled;
+            SpawnIntervalSlider.IsEnabled = isEnabled;
+
+            // Optional: visual greying out
+            SpawnRateSlider.Opacity = isEnabled ? 1.0 : 0.5;
+            SpawnRateValue.Opacity = isEnabled ? 1.0 : 0.5;
+            SpawnIntervalSlider.Opacity = isEnabled ? 1.0 : 0.5;
+            SpawnIntervalValue.Opacity = isEnabled ? 1.0 : 0.5;
         }
     }
 }

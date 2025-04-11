@@ -14,6 +14,7 @@ namespace CsEvoSim.Systems
         public int SpawnRate { get; set; } = 1;
         public double Interval { get; set; } = 1.0; // seconds
         public int MaxEntities { get; set; } = 200;
+        public bool IsEnabled { get; set; } = true;
 
         private double _elapsed = 0;
         private readonly Random _rand = new();
@@ -26,7 +27,7 @@ namespace CsEvoSim.Systems
 
         public void Update(List<Entity> entities)
         {
-            if (entities.Count >= MaxEntities) return;
+            if (!IsEnabled || entities.Count >= MaxEntities) return;
 
             _elapsed += 1.0 / 60.0; // assuming ~60 FPS
 
@@ -44,3 +45,4 @@ namespace CsEvoSim.Systems
         }
     }
 }
+
