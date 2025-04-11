@@ -27,6 +27,7 @@ namespace CsEvoSim
         {
             InitializeComponent();
             Loaded += (_, _) => InitializeSimulation();
+            SizeChanged += MainWindow_SizeChanged;
         }
 
         private void InitializeSimulation()
@@ -39,6 +40,7 @@ namespace CsEvoSim
 
             // Create systems
             var movementSystem = new MovementSystem();
+            movementSystem.SetCanvasDimensions(canvasWidth, canvasHeight);
             var renderSystem = new RenderSystem(SimulationCanvas);
             var spawnerSystem = new SpawnerSystem(canvasWidth, canvasHeight);
 
@@ -184,6 +186,16 @@ namespace CsEvoSim
         {
             MessageBox.Show("CsEvoSim - Evolution Simulation\nVersion 1.0",
                 "About", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            // Update movement system with new canvas dimensions
+            if (_systemsWithSettings.TryGetValue("Movement", out var system) &&
+                system is MovementSystem movementSystem)
+            {
+                movementSystem.SetCanvasDimensions(SimulationCanvas.ActualWidth, SimulationCanvas.ActualHeight);
+            }
         }
     }
 }

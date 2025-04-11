@@ -14,6 +14,11 @@ namespace CsEvoSim.Systems
         private double _speedNoiseStep = 0.015; // slightly different rate for speed variation
         private double _noiseTime = 0.0;
         private double _speedNoiseTime = 0.0;
+        private double _maxOverflowPercent = 10.0; // How far beyond screen edges organisms can go (%)
+
+        // Cached canvas dimensions
+        private double _canvasWidth;
+        private double _canvasHeight;
 
         // Properties for settings
         public double MovementScale
@@ -34,12 +39,25 @@ namespace CsEvoSim.Systems
             set => _speedNoiseStep = value;
         }
 
+        public double MaxOverflowPercent
+        {
+            get => _maxOverflowPercent;
+            set => _maxOverflowPercent = value;
+        }
+
         public string SettingsGroupName => "Movement";
 
         public MovementSystem()
         {
             // Initialize SimplexNoise with a random seed
             Noise.Seed = _random.Next();
+        }
+
+        // Method to update canvas dimensions
+        public void SetCanvasDimensions(double width, double height)
+        {
+            _canvasWidth = width;
+            _canvasHeight = height;
         }
 
         public IEnumerable<SystemSetting> GetSettings()
@@ -67,6 +85,14 @@ namespace CsEvoSim.Systems
                 val => _speedNoiseStep = val,
                 "How quickly organism speed varies (higher = more variable speed)"
             );
+
+            yield return SystemSetting.CreateNumeric(
+                "MaxOverflowPercent",
+                "Max Screen Overflow %",
+                _maxOverflowPercent, 0.0, 30.0, 1.0,
+                val => _maxOverflowPercent = val,
+                "Maximum percentage beyond screen edges that organisms can travel"
+            );
         }
 
         public void Update(List<Entity> entities)
@@ -74,6 +100,16 @@ namespace CsEvoSim.Systems
             // Existing implementation
             _noiseTime += _noiseStep;
             _speedNoiseTime += _speedNoiseStep;
+
+            // Calculate boundary limits with overflow
+            double overflowX = _canvasWidth * (_maxOverflowPercent / 100.0);
+            double overflowY = _canvasHeight * (_maxOverflowPercent / 100.0);
+
+            // Define boundaries
+            double minX = -overflowX;
+            double maxX = _canvasWidth + overflowX;
+            double minY = -overflowY;
+            double maxY = _canvasHeight + overflowY;
 
             foreach (var entity in entities)
             {
@@ -113,8 +149,23 @@ namespace CsEvoSim.Systems
                 double dx = Math.Cos(angle) * actualSpeed;
                 double dy = Math.Sin(angle) * actualSpeed;
 
-                position.X += dx;
-                position.Y += dy;
+                // Calculate new position
+                double newX = position.X + dx;
+                double newY = position.Y + dy;
+
+                // Apply boundary constraints by clamping to allowed range
+                // Account for organism size (assuming size is diameter)
+                double radius = dna.Size / 2;
+
+                // Clamp X position
+                newX = Math.Max(minX + radius, Math.Min(maxX - radius, newX));
+
+                // Clamp Y position
+                newY = Math.Max(minY + radius, Math.Min(maxY - radius, newY));
+
+                // Update position
+                position.X = newX;
+                position.Y = newY;
             }
         }
     }
